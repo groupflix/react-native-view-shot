@@ -115,7 +115,7 @@ RCT_EXPORT_METHOD(captureRef:(nonnull NSNumber *)target
     }
     else {
       // this doesn't work for large views and reports incorrect success even though the image is blank
-      success = [rendered drawViewHierarchyInRect:(CGRect){CGPointZero, size} afterScreenUpdates:YES];
+      success = [rendered drawViewHierarchyInRect:(CGRect){CGPointZero, size} afterScreenUpdates:NO];
     }
     UIImage *image = UIGraphicsGetImageFromCurrentImageContext();
     UIGraphicsEndImageContext();
