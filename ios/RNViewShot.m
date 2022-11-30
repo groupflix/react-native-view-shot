@@ -71,7 +71,7 @@ RCT_EXPORT_METHOD(captureRef:(nonnull NSNumber *)target
     BOOL snapshotContentContainer = [RCTConvert BOOL:options[@"snapshotContentContainer"]];
 
     // Capture image
-    BOOL success;
+    __block BOOL success;
 
     UIView* rendered;
     UIScrollView* scrollView;
@@ -107,78 +107,77 @@ RCT_EXPORT_METHOD(captureRef:(nonnull NSNumber *)target
     }
 
     UIGraphicsBeginImageContextWithOptions(size, NO, 0);
-    
+
+    void(^captureBlock)(void)  = ^(void) {
+      UIImage *image = UIGraphicsGetImageFromCurrentImageContext();
+      UIGraphicsEndImageContext();
+      if (snapshotContentContainer) {
+        // Restore scroll & frame
+        scrollView.contentOffset = savedContentOffset;
+        scrollView.frame = savedFrame;
+      }
+      if (!success) {
+        reject(RCTErrorUnspecified, @"The view cannot be captured. drawViewHierarchyInRect was not successful. This is a potential technical or security limitation.", nil);
+        return;
+      }
+      if (!image) {
+        reject(RCTErrorUnspecified, @"Failed to capture view snapshot. UIGraphicsGetImageFromCurrentImageContext() returned nil!", nil);
+        return;
+      }
+      // Convert image to data (on a background thread)
+      dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        NSData *data;
+        if ([format isEqualToString:@"jpg"]) {
+          CGFloat quality = [RCTConvert CGFloat:options[@"quality"]];
+          data = UIImageJPEGRepresentation(image, quality);
+        }
+        else {
+          data = UIImagePNGRepresentation(image);
+        }
+        NSError *error = nil;
+        NSString *res = nil;
+        if ([result isEqualToString:@"base64"]) {
+          // Return as a base64 raw string
+          res = [data base64EncodedStringWithOptions: NSDataBase64Encoding64CharacterLineLength];
+        }
+        else if ([result isEqualToString:@"data-uri"]) {
+          // Return as a base64 data uri string
+          NSString *base64 = [data base64EncodedStringWithOptions: NSDataBase64Encoding64CharacterLineLength];
+          NSString *imageFormat = ([format isEqualToString:@"jpg"]) ? @"jpeg" : format;
+          res = [NSString stringWithFormat:@"data:image/%@;base64,%@", imageFormat, base64];
+        }
+        else {
+          // Save to a temp file
+          NSString *path = RCTTempFilePath(format, &error);
+          if (path && !error) {
+            if ([data writeToFile:path options:(NSDataWritingOptions)0 error:&error]) {
+              res = path;
+            }
+          }
+        }
+        if (res && !error) {
+          resolve(res);
+          return;
+        }
+        // If we reached here, something went wrong
+        if (error) reject(RCTErrorUnspecified, error.localizedDescription, error);
+        else reject(RCTErrorUnspecified, @"viewshot unknown error", nil);
+      });
+    };
+
     if (renderInContext) {
       // this comes with some trade-offs such as inability to capture gradients or scrollview's content in full but it works for large views
       [rendered.layer renderInContext: UIGraphicsGetCurrentContext()];
       success = YES;
+      captureBlock();
     }
     else {
-      // this doesn't work for large views and reports incorrect success even though the image is blank
-      success = [rendered drawViewHierarchyInRect:(CGRect){CGPointZero, size} afterScreenUpdates:NO];
+      [CATransaction setCompletionBlock:^{
+        // this doesn't work for large views and reports incorrect success even though the image is blank
+        success = [rendered drawViewHierarchyInRect:(CGRect){CGPointZero, size} afterScreenUpdates:NO];
+        captureBlock();
+      }];
     }
-    UIImage *image = UIGraphicsGetImageFromCurrentImageContext();
-    UIGraphicsEndImageContext();
-
-    if (snapshotContentContainer) {
-      // Restore scroll & frame
-      scrollView.contentOffset = savedContentOffset;
-      scrollView.frame = savedFrame;
-    }
-
-    if (!success) {
-      reject(RCTErrorUnspecified, @"The view cannot be captured. drawViewHierarchyInRect was not successful. This is a potential technical or security limitation.", nil);
-      return;
-    }
-
-    if (!image) {
-      reject(RCTErrorUnspecified, @"Failed to capture view snapshot. UIGraphicsGetImageFromCurrentImageContext() returned nil!", nil);
-      return;
-    }
-
-    // Convert image to data (on a background thread)
-    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-
-      NSData *data;
-      if ([format isEqualToString:@"jpg"]) {
-        CGFloat quality = [RCTConvert CGFloat:options[@"quality"]];
-        data = UIImageJPEGRepresentation(image, quality);
-      }
-      else {
-        data = UIImagePNGRepresentation(image);
-      }
-
-      NSError *error = nil;
-      NSString *res = nil;
-      if ([result isEqualToString:@"base64"]) {
-        // Return as a base64 raw string
-        res = [data base64EncodedStringWithOptions: NSDataBase64Encoding64CharacterLineLength];
-      }
-      else if ([result isEqualToString:@"data-uri"]) {
-        // Return as a base64 data uri string
-        NSString *base64 = [data base64EncodedStringWithOptions: NSDataBase64Encoding64CharacterLineLength];
-        NSString *imageFormat = ([format isEqualToString:@"jpg"]) ? @"jpeg" : format;
-        res = [NSString stringWithFormat:@"data:image/%@;base64,%@", imageFormat, base64];
-      }
-      else {
-        // Save to a temp file
-        NSString *path = RCTTempFilePath(format, &error);
-        if (path && !error) {
-          if ([data writeToFile:path options:(NSDataWritingOptions)0 error:&error]) {
-            res = path;
-          }
-        }
-      }
-
-      if (res && !error) {
-        resolve(res);
-        return;
-      }
-
-      // If we reached here, something went wrong
-      if (error) reject(RCTErrorUnspecified, error.localizedDescription, error);
-      else reject(RCTErrorUnspecified, @"viewshot unknown error", nil);
-    });
   }];
 }
 
