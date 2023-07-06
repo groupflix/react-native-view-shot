@@ -2,20 +2,8 @@
 import React, { Component } from "react";
 import { View, Platform, findNodeHandle, StyleProp } from "react-native";
 import RNViewShot from "./RNViewShot";
-import type { ViewStyleProp } from "react-native/Libraries/StyleSheet/StyleSheet";
-import type { LayoutEvent } from "react-native/Libraries/Types/CoreEventTypes";
 
 const neverEndingPromise = new Promise(() => {});
-
-type Options = {
-  width?: number,
-  height?: number,
-  format: "png" | "jpg" | "webm" | "raw",
-  quality: number,
-  result: "tmpfile" | "base64" | "data-uri" | "zip-base64",
-  snapshotContentContainer: boolean,
-  handleGLSurfaceViewOnAndroid: boolean,
-};
 
 if (!RNViewShot) {
   console.warn(
@@ -40,11 +28,8 @@ const defaultOptions = {
 };
 
 // validate and coerce options
-function validateOptions(input: ?$Shape<Options>): {
-  options: Options,
-  errors: Array<string>,
-} {
-  const options: Options = {
+function validateOptions(input) {
+  const options = {
     ...defaultOptions,
     ...input,
   };
@@ -106,10 +91,10 @@ export function ensureModuleIsLoaded() {
   }
 }
 
-export function captureRef<T: React$ElementType>(
-  view: number | ?View | React$Ref<T>,
-  optionsObject?: Object
-): Promise<string> {
+export async function captureRef(
+  view,
+  optionsObject
+) {
   ensureModuleIsLoaded();
   if (
     view &&
@@ -143,7 +128,7 @@ export function captureRef<T: React$ElementType>(
   return RNViewShot.captureRef(view, options);
 }
 
-export function releaseCapture(uri: string): void {
+export function releaseCapture(uri) {
   if (typeof uri !== "string") {
     if (__DEV__) {
       console.warn("Invalid argument to releaseCapture. Got: " + uri);
@@ -153,7 +138,7 @@ export function releaseCapture(uri: string): void {
   }
 }
 
-export function captureScreen(optionsObject?: Options): Promise<string> {
+export async function captureScreen(optionsObject) {
   ensureModuleIsLoaded();
   const { options, errors } = validateOptions(optionsObject);
   if (__DEV__ && errors.length > 0) {
@@ -165,17 +150,7 @@ export function captureScreen(optionsObject?: Options): Promise<string> {
   return RNViewShot.captureScreen(options);
 }
 
-type Props = {
-  options?: Object,
-  captureMode?: "mount" | "continuous" | "update",
-  children: React$Node,
-  onLayout?: (e: *) => void,
-  onCapture?: (uri: string) => void,
-  onCaptureFailure?: (e: Error) => void,
-  style?: StyleProp<ViewStyleProp>,
-};
-
-function checkCompatibleProps(props: Props) {
+function checkCompatibleProps(props) {
   if (!props.captureMode && props.onCapture) {
     // in that case, it's authorized if you call capture() yourself
   } else if (props.captureMode && !props.onCapture) {
@@ -195,21 +170,21 @@ function checkCompatibleProps(props: Props) {
   }
 }
 
-export default class ViewShot extends Component<Props> {
+export default class ViewShot extends Component {
   static captureRef = captureRef;
   static releaseCapture = releaseCapture;
 
-  root: ?View;
+  root;
 
-  _raf: *;
-  lastCapturedURI: ?string;
+  _raf;
+  lastCapturedURI;
 
-  resolveFirstLayout: (layout: Object) => void;
-  firstLayoutPromise: Promise<Object> = new Promise((resolve) => {
+  resolveFirstLayout;
+  firstLayoutPromise = new Promise((resolve) => {
     this.resolveFirstLayout = resolve;
   });
 
-  capture = (): Promise<string> =>
+  capture = () =>
     this.firstLayoutPromise
       .then(() => {
         const { root } = this;
@@ -217,17 +192,17 @@ export default class ViewShot extends Component<Props> {
         return captureRef(root, this.props.options);
       })
       .then(
-        (uri: string) => {
+        (uri) => {
           this.onCapture(uri);
           return uri;
         },
-        (e: Error) => {
+        (e) => {
           this.onCaptureFailure(e);
           throw e;
         }
       );
 
-  onCapture = (uri: string) => {
+  onCapture = (uri) => {
     if (!this.root) return;
     if (this.lastCapturedURI) {
       // schedule releasing the previous capture
@@ -238,13 +213,13 @@ export default class ViewShot extends Component<Props> {
     if (onCapture) onCapture(uri);
   };
 
-  onCaptureFailure = (e: Error) => {
+  onCaptureFailure = (e) => {
     if (!this.root) return;
     const { onCaptureFailure } = this.props;
     if (onCaptureFailure) onCaptureFailure(e);
   };
 
-  syncCaptureLoop = (captureMode: ?string) => {
+  syncCaptureLoop = (captureMode) => {
     cancelAnimationFrame(this._raf);
     if (captureMode === "continuous") {
       let previousCaptureURI = "-"; // needs to capture at least once at first, so we use "-" arbitrary string
@@ -258,11 +233,11 @@ export default class ViewShot extends Component<Props> {
     }
   };
 
-  onRef = (ref: React$ElementRef<*>) => {
+  onRef = (ref) => {
     this.root = ref;
   };
 
-  onLayout = (e: LayoutEvent) => {
+  onLayout = (e) => {
     const { onLayout } = this.props;
     this.resolveFirstLayout(e.nativeEvent.layout);
     if (onLayout) onLayout(e);
@@ -277,7 +252,7 @@ export default class ViewShot extends Component<Props> {
     }
   }
 
-  componentDidUpdate(prevProps: Props) {
+  componentDidUpdate(prevProps) {
     if (this.props.captureMode !== undefined) {
       if (this.props.captureMode !== prevProps.captureMode) {
         this.syncCaptureLoop(this.props.captureMode);
