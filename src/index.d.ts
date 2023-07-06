@@ -10,7 +10,7 @@
 
 declare module 'react-native-view-shot' {
     import { Component, ReactInstance, RefObject, ReactNode } from 'react'
-    import { ViewStyle } from 'react-native'
+    import { StyleProp, ViewStyle } from 'react-native'
     import { LayoutChangeEvent } from 'react-native'
 
 
@@ -55,6 +55,11 @@ declare module 'react-native-view-shot' {
          * False by default, because it can have signoficant performance impact
          */
         handleGLSurfaceViewOnAndroid?: boolean;
+        /**
+         * (iOS only) change the iOS snapshot strategy to use method renderInContext instead of drawViewHierarchyInRect 
+         * which may help for some use cases.
+         */
+        useRenderInContext?: boolean;
     }
 
     export interface ViewShotProperties {
@@ -89,9 +94,9 @@ declare module 'react-native-view-shot' {
          */
         onLayout?(event: LayoutChangeEvent): void;
         /**
-         * style prop as ViewStyle
+         * style prop as StyleProp<ViewStyle>
          */
-        style?: ViewStyle;
+        style?: StyleProp<ViewStyle>;
     }
 
     export default class ViewShot extends Component<React.PropsWithChildren<ViewShotProperties>> {
