@@ -112,14 +112,10 @@ RCT_EXPORT_METHOD(captureRef:(nonnull NSNumber *)target
       // this comes with some trade-offs such as inability to capture gradients or scrollview's content in full but it works for large views
       [rendered.layer renderInContext: UIGraphicsGetCurrentContext()];
       success = YES;
-      captureBlock();
     }
     else {
-      [CATransaction setCompletionBlock:^{
-        // this doesn't work for large views and reports incorrect success even though the image is blank
-        success = [rendered drawViewHierarchyInRect:(CGRect){CGPointZero, size} afterScreenUpdates:NO];
-        captureBlock();
-      }];
+      // this doesn't work for large views and reports incorrect success even though the image is blank
+      success = [rendered drawViewHierarchyInRect:(CGRect){CGPointZero, size} afterScreenUpdates:YES];
     }
    
     UIImage *image = [renderer imageWithActions:^(UIGraphicsImageRendererContext * _Nonnull rendererContext) {}];
