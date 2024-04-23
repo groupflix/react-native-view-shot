@@ -16,12 +16,7 @@ import com.facebook.react.bridge.ReactContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.bridge.ReadableMap;
-import com.facebook.react.bridge.UIManager;
-import com.facebook.react.fabric.FabricUIManager;
-import com.facebook.react.turbomodule.core.interfaces.TurboModule;
-import com.facebook.react.uimanager.UIManagerHelper;
 import com.facebook.react.uimanager.UIManagerModule;
-import com.facebook.react.uimanager.common.UIManagerType;
 
 import java.io.File;
 import java.io.FilenameFilter;
@@ -34,7 +29,7 @@ import java.util.concurrent.Executors;
 import fr.greweb.reactnativeviewshot.ViewShot.Formats;
 import fr.greweb.reactnativeviewshot.ViewShot.Results;
 
-public class RNViewShotModule extends ReactContextBaseJavaModule implements TurboModule {
+public class RNViewShotModule extends ReactContextBaseJavaModule {
 
     public static final String RNVIEW_SHOT = "RNViewShot";
 
@@ -76,8 +71,7 @@ public class RNViewShotModule extends ReactContextBaseJavaModule implements Turb
     }
 
     @ReactMethod
-    public void captureRef(double tagFromJs, ReadableMap options, Promise promise) {
-        int tag = (int) tagFromJs;
+    public void captureRef(int tag, ReadableMap options, Promise promise) {
         final ReactApplicationContext context = getReactApplicationContext();
         final DisplayMetrics dm = context.getResources().getDisplayMetrics();
 
@@ -105,19 +99,9 @@ public class RNViewShotModule extends ReactContextBaseJavaModule implements Turb
             }
 
             final Activity activity = getCurrentActivity();
-            ViewShot uiBlock = new ViewShot(
-                    tag, extension, imageFormat, quality,
-                    scaleWidth, scaleHeight, outputFile, resultStreamFormat,
-                    snapshotContentContainer, reactContext, activity, handleGLSurfaceView, promise, executor
-            );
+            final UIManagerModule uiManager = this.reactContext.getNativeModule(UIManagerModule.class);
 
-            if (BuildConfig.IS_NEW_ARCHITECTURE_ENABLED) {
-                UIManager uiManager = UIManagerHelper.getUIManager(context, UIManagerType.FABRIC);
-                ((FabricUIManager)uiManager).addUIBlock(uiBlock);
-            } else {
-                final UIManagerModule uiManager = this.reactContext.getNativeModule(UIManagerModule.class);
-                uiManager.addUIBlock(uiBlock);
-            }
+            uiManager.addUIBlock(new ViewShot(tag, extension, imageFormat, quality, scaleWidth, scaleHeight, outputFile, resultStreamFormat, snapshotContentContainer, reactContext, activity, handleGLSurfaceView, promise, executor));
         } catch (final Throwable ex) {
             Log.e(RNVIEW_SHOT, "Failed to snapshot view tag " + tag, ex);
             promise.reject(ViewShot.ERROR_UNABLE_TO_SNAPSHOT, "Failed to snapshot view tag " + tag);
