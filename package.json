@@ -20,7 +20,7 @@
     "url": "https://github.com/gre/react-native-view-shot.git"
   },
   "dependencies": {
-    "html2canvas": "^1.4.1"
+    "dom-to-image-more": "^3.3.1"
   },
   "peerDependencies": {
     "react": "*",
