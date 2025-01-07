@@ -13,8 +13,8 @@ Pod::Spec.new do |s|
   s.platforms     = { :ios => '9.0', :tvos => '12.4' }
 
   s.source       = { :git => "https://github.com/gre/react-native-view-shot.git", :tag => "v#{s.version}" }
-  s.source_files  = "ios/**/*.{h,m,mm}"
+  s.source_files  = "ios/**/*.{h,m}"
 
-  install_modules_dependencies(s)
+  s.dependency 'React-Core'
 end
 

@@ -5,32 +5,33 @@ import android.app.Activity;
 import android.content.Context;
 import android.net.Uri;
 import android.os.AsyncTask;
+import androidx.annotation.NonNull;
 import android.util.DisplayMetrics;
 import android.util.Log;
-
-import androidx.annotation.NonNull;
 
 import com.facebook.react.bridge.GuardedAsyncTask;
 import com.facebook.react.bridge.Promise;
 import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactContext;
+import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.bridge.ReadableMap;
-import com.facebook.react.bridge.UIManager;
-import com.facebook.react.fabric.FabricUIManager;
-import com.facebook.react.uimanager.UIManagerHelper;
 import com.facebook.react.uimanager.UIManagerModule;
 
 import java.io.File;
 import java.io.FilenameFilter;
 import java.io.IOException;
+import java.util.Collections;
+import java.util.Map;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
 import fr.greweb.reactnativeviewshot.ViewShot.Formats;
 import fr.greweb.reactnativeviewshot.ViewShot.Results;
 
-public class RNViewShotModule extends NativeRNViewShotSpec {
+public class RNViewShotModule extends ReactContextBaseJavaModule {
+
+    public static final String RNVIEW_SHOT = "RNViewShot";
 
     private final ReactApplicationContext reactContext;
 
@@ -39,6 +40,16 @@ public class RNViewShotModule extends NativeRNViewShotSpec {
     public RNViewShotModule(ReactApplicationContext reactContext) {
         super(reactContext);
         this.reactContext = reactContext;
+    }
+
+    @Override
+    public String getName() {
+        return RNVIEW_SHOT;
+    }
+
+    @Override
+    public Map<String, Object> getConstants() {
+        return Collections.emptyMap();
     }
 
     @Override
@@ -60,8 +71,7 @@ public class RNViewShotModule extends NativeRNViewShotSpec {
     }
 
     @ReactMethod
-    public void captureRef(Double tagFromJs, ReadableMap options, Promise promise) {
-        int tag = tagFromJs == null ? -1 : tagFromJs.intValue();
+    public void captureRef(int tag, ReadableMap options, Promise promise) {
         final ReactApplicationContext context = getReactApplicationContext();
         final DisplayMetrics dm = context.getResources().getDisplayMetrics();
 
@@ -93,14 +103,14 @@ public class RNViewShotModule extends NativeRNViewShotSpec {
 
             uiManager.addUIBlock(new ViewShot(tag, extension, imageFormat, quality, scaleWidth, scaleHeight, outputFile, resultStreamFormat, snapshotContentContainer, reactContext, activity, handleGLSurfaceView, promise, executor));
         } catch (final Throwable ex) {
-            Log.e(NAME, "Failed to snapshot view tag " + tag, ex);
+            Log.e(RNVIEW_SHOT, "Failed to snapshot view tag " + tag, ex);
             promise.reject(ViewShot.ERROR_UNABLE_TO_SNAPSHOT, "Failed to snapshot view tag " + tag);
         }
     }
 
     @ReactMethod
     public void captureScreen(ReadableMap options, Promise promise) {
-        captureRef((double) -1, options, promise);
+        captureRef(-1, options, promise);
     }
 
     private static final String TEMP_FILE_PREFIX = "ReactNative-snapshot-image";
@@ -143,7 +153,7 @@ public class RNViewShotModule extends NativeRNViewShotSpec {
             if (toDelete != null) {
                 for (File file : toDelete) {
                     if (file.delete()) {
-                        Log.d(NAME, "deleted file: " + file.getAbsolutePath());
+                        Log.d(RNVIEW_SHOT, "deleted file: " + file.getAbsolutePath());
                     }
                 }
             }
