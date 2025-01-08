@@ -2,6 +2,8 @@
 import React, { Component } from "react";
 import { View, Platform, findNodeHandle, StyleProp } from "react-native";
 import RNViewShot from "./RNViewShot";
+import type { ViewStyleProp } from "react-native/Libraries/StyleSheet/StyleSheet";
+import type { LayoutEvent } from "react-native/Libraries/Types/CoreEventTypes";
 
 const neverEndingPromise = new Promise(() => {});
 
